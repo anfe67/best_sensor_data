@@ -9,7 +9,6 @@ from scipy import stats
 
 sensor_data = [66.6, 66.6, 66.7, 67.1, 66.7, 66.7, 66.7, 66.7, 66.6, 66.7, 66.3, 66.7, 66.7, 66.3, 67.1, 66.7, 66.6, 66.2, 66.3, 66.6, 66.3, 66.7, 66.7, 62.5, 66.7, 66.2, 66.6, 66.7, 66.7, 66.7, 67.1, 67.1, 67.1, 66.7, 66.2, 66.7, 64.8, 66.7, 66.7, 67.1, 67.1, 66.7, 66.7, 66.6, 66.7, 66.6, 66.2, 66.6, 67.1, 66.6, 67.1, 66.7, 66.2, 67.5, 66.7, 66.7, 67.1, 66.7, 66.7, 66.3]
 
-
 def quartile(data):
 
     """ finds out the Q1, median, Q3 and inter - quartile range an returns them as a tuple """
@@ -23,7 +22,8 @@ def quartile(data):
 def analyse_data(data):
 
     """ Brief exploration of the data, to see which value is the most reliable,
-        two different strategies for removing outliers ('dirty data') are compared """
+        two different strategies for removing outliers, one using zscores and
+        the other using the 1*5*IQR strategy. Results and ('dirty data') are compared """
 
     (lower_quartile, data_median, upper_quartile, iqr) = quartile(data)
     print(lower_quartile, data_median, upper_quartile, iqr)
@@ -56,13 +56,15 @@ def analyse_data(data):
     scored_data = list(zip(data, zscores))
     print(f"Z scores of data {  scored_data }")
     outliers = [k for (k,v) in scored_data if v ]
-    print(f"Outliers {  outliers }")
+    print(f"Outliers using zscores * 2.5 * sd (usually is *3 sd *sd) {  outliers }")
     outliers2 = [k for k in data if (k > upper_quartile + 1.5*iqr ) or (k < lower_quartile - 1.5*iqr )]
-    print(f"Outliers as in boxplot {outliers2}")
+    print(f"Outliers using IQR {outliers2}")
 
-    # remove outliers
+    # remove outliers IQR
     data_clean = [item for item in data if item not in outliers2]
 
+    # Remove outliers zscores
+    data_clean_z = [item for item in data if item not in outliers]
 
     # And again
     print(f"Size {len(data_clean)}")
@@ -82,16 +84,31 @@ def analyse_data(data):
     print(f"Z scores of CLEAN data {  scored_data_clean }")
 
     freq_dict_clean = {x:data_clean.count(x) for x in data_clean}
+    freq_dict_clean_z = {x:data_clean_z.count(x) for x in data_clean_z}
 
-    f, ax = plt.subplots(1, 4)
-    ax[0].bar(freq_dict.keys(), freq_dict.values())
-    ax[1].boxplot(data, patch_artist = True,
-                  notch ='True')
-    ax[2].bar(freq_dict_clean.keys(), freq_dict_clean.values())
-    ax[3].boxplot(data_clean, patch_artist=True,
-                  notch='True')
+
+    # Three figures, one with the raw data, and one for each strategy
+
+    f, ax = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (.25, .75)})
+    ax[0].boxplot(data, notch= True, patch_artist=True, vert=False)
+    ax[1].bar(freq_dict.keys(), freq_dict.values(), edgecolor='black')
+    ax[1].set(xlabel="Raw sensor data")
+
+    f1, ax1 = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (.25, .75)})
+
+    ax1[0].boxplot(data_clean, notch= True, patch_artist=True, vert=False)
+    ax1[1].bar(freq_dict_clean.keys(), freq_dict_clean.values(), edgecolor='black')
+    ax1[1].set(xlabel="Sensor data with outliers removed (IQR Method")
+
+    f2, ax2 = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (.25, .75)})
+
+    ax2[0].boxplot(data_clean_z, notch= True, patch_artist=True, vert=False)
+    ax2[1].bar(freq_dict_clean_z.keys(), freq_dict_clean_z.values(), edgecolor='black')
+    ax2[1].set(xlabel="Sensor data with outliers removed (zscores)")
 
     plt.show()
+
+
     # other factors may be taken into account :
     # if the measurement with the maximum frequency represents less than 50% of the observations,
     # then take it, if not group the max freqs until more than 50% and take average
@@ -117,7 +134,8 @@ def find_measure(data):
 if __name__ == '__main__':
 
     # Uncomment here below to show the data analysis
-    # analyse_data(sensor_data)
-    print(find_measure(sensor_data))
+    analyse_data(sensor_data)
+    print(f"Measure IQR: {find_measure(sensor_data)}")
+
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
